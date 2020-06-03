@@ -15,7 +15,7 @@ let storage = multer.diskStorage({
     },
     filename: (req, file, cb) => {
         console.log('filename');
-        console.log(file.originalname);
+        console.log(path.extname(file.originalname));
         cb(null, file.fieldname + '-' + Date.now() + '.' + path.extname(file.originalname));
     }
 })
@@ -28,21 +28,37 @@ db.then(() => {
     console.log('errror connecting db', err);
 })
 
+function verifyToken(req,res,next){
+    if(!req.headers.authorization){
+        return res.status(401).send('unathorized request')
+    }
+    let token = req.headers.authorization.split(' ')[1];
+    if(token == 'null'){
+        return res.status(401).send('unauthorized request');
+    }
+    let payload = jwt.verify(token,'secretKey');
+    if(!payload){
+        return res.status(401).send('unauthorized request');
+    }
+    next()
+}
+
 router.get('/', (req, res) => {
     res.send('Hi from api');
 });
 
 //  User validating and login in
 router.post('/login', (req, res) => {
-
     const { email, password } = req.body;
     const collection = db.get('users');
 
     collection.findOne({ email }).then((data) => {
         if (password === data.password) {
             console.log('successfull login');
+            sess = req.session;
+            sess.email = email;
             const payload = { subject: data._id };
-            const token = jwt.sign(payload, 'scretKey');
+            const token = jwt.sign(payload, 'secretKey');
             res.status(200).send({ token, email });
         } else {
             res.status(401).send('invalid password');
@@ -68,9 +84,10 @@ router.post('/registration', (req, res) => {
 
 router.post('/upload', upload.single('file'), (req, res) => {
     if (!req.file) {
-        console.log("your request does not have file");
+        console.log("your request does not have file");        
         return res.send({ success: 'false' })
-    } else {
+    } else {        
+        console.log(sess.email);
         console.log('your file has been recieved successfully');
         return res.send({ success: 'true' });
     }
@@ -78,11 +95,10 @@ router.post('/upload', upload.single('file'), (req, res) => {
 
 router.put('/updateuser/:email', (req, res) => {
     console.log('updateuser');
+    console.log(req.body);
     const email = req.params.email;
-    console.log(email)
     const collection = db.get('members');
     collection.findOneAndUpdate({ email: email },{$set: req.body}).then(data => {
-        console.log(data);
         res.status(200).send(data);
     }).catch(err => {
         res.status(400).send(err);
@@ -90,12 +106,10 @@ router.put('/updateuser/:email', (req, res) => {
     //res.send({email});
 });
 
-router.get('/member/:email', (req, res) => {
+router.get('/member/:email', verifyToken, (req, res) => {
     const email = req.params.email;
-    console.log(email);
     const collection = db.get('members');
     collection.findOne({ email: email }).then(data => {
-        console.log(data);
         res.status(200).send(data);
     }).catch(err => {
         res.status(400).send(err);
@@ -104,10 +118,8 @@ router.get('/member/:email', (req, res) => {
 
 router.get('/member', (req, res) => {
     const email = req.params.email;
-    console.log(email);
     const collection = db.get('members');
     collection.find({ }).then(data => {
-        console.log(data);
         res.status(200).send(data);
     }).catch(err => {
         res.status(400).send(err);
