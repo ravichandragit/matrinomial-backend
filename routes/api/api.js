@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 
 const monk = require('monk');
-const url = 'localhost:27017/matrinomial';
+const url = 'mongodb+srv://ravichandra:ravimongodb@cluster0-fti2i.mongodb.net/matrinomial?retryWrites=true&w=majority';
 const db = monk(url);
 
 const DIR = './upload';
