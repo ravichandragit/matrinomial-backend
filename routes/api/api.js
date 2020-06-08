@@ -25,7 +25,7 @@ let upload = multer({ storage: storage })
 db.then(() => {
     console.log('connected correctly to db');
 }).catch(err => {
-    console.log('errror connecting db', err);
+    console.log('error connecting db', err);
 })
 
 function verifyToken(req,res,next){
@@ -69,12 +69,22 @@ router.post('/login', (req, res) => {
 
 });
 
+async function insertinlogin(email,password){
+    const collection = db.get('users');
+    await collection.insert({email,password}).then((data) => {
+        console.log(data)
+    }).catch(err => {
+        console.log(err)
+    })
+}
+
 //  Registering user
 router.post('/registration', (req, res) => {
     const collection = db.get('members');
     const userdetails = req.body;
     collection.insert(userdetails).then(data => {
-        console.log('inserted in member collection')
+        console.log('inserted in member collection');
+        insertinlogin(data.email,data.password)
         res.status(200).send(data);
     }).catch(err => {
         console.log('error inserting in member collection')
